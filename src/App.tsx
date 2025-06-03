@@ -1,51 +1,30 @@
-import { useState } from "react";
-import reactLogo from "./assets/react.svg";
-import { invoke } from "@tauri-apps/api/core";
-import "./App.css";
+import { useState } from 'react'
+import AppList, { TrackedApp } from './components/AppList'
 
 function App() {
-  const [greetMsg, setGreetMsg] = useState("");
-  const [name, setName] = useState("");
-
-  async function greet() {
-    // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-    setGreetMsg(await invoke("greet", { name }));
-  }
+  // Placeholder
+  const [apps, setApps] = useState<TrackedApp[]>([])
 
   return (
-    <main className="container">
-      <h1>Welcome to Tauri + React</h1>
-
-      <div className="row">
-        <a href="https://vitejs.dev" target="_blank">
-          <img src="/vite.svg" className="logo vite" alt="Vite logo" />
-        </a>
-        <a href="https://tauri.app" target="_blank">
-          <img src="/tauri.svg" className="logo tauri" alt="Tauri logo" />
-        </a>
-        <a href="https://reactjs.org" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <p>Click on the Tauri, Vite, and React logos to learn more.</p>
-
-      <form
-        className="row"
-        onSubmit={(e) => {
-          e.preventDefault();
-          greet();
-        }}
-      >
-        <input
-          id="greet-input"
-          onChange={(e) => setName(e.currentTarget.value)}
-          placeholder="Enter a name..."
-        />
-        <button type="submit">Greet</button>
-      </form>
-      <p>{greetMsg}</p>
-    </main>
-  );
+    <div className='min-h-screen bg-white p-8'>
+      <header className='max-w-4xl mx-auto mb-8'>
+        <h1 className='text-3xl font-bold mb-2'>Tynamo</h1>
+        <p className='text-gray-600'>
+          Track how much time you've spent in your apps!
+        </p>
+      </header>
+      <main className='max-w-4xl mx-auto'>
+        <div className='flex justify-end mb-4'>
+          <button
+            className='px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition'
+          > 
+            + Add App
+          </button>
+        </div>
+        <AppList apps={apps} />
+      </main>
+    </div>
+  )
 }
 
 export default App;
