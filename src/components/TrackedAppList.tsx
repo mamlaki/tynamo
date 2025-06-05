@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 
 type ProcessInfo = {
@@ -7,17 +7,32 @@ type ProcessInfo = {
 }
 
 export type TrackedApp = {
-  id: NamedCurve
+  id: number
   name: string
+}
+
+type AppUsage = {
+  name: string;
+  total_seconds: number;
+}
+
+// Format time for ui utility
+const formatTime = (secs: number): string => {
+  const h = Math.floor(secs / 3600);
+  const m = Math.floor((secs % 3600) / 60);
+  const s = secs % 60;
+  return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
 }
 
 export default function TrackedAppList() {
   const [apps, setApps] = useState<TrackedApp[]>([])
+  const [usage, setUsage] = useState<Record<string, number>>({});
 
   const [showModal, setShowModal] = useState(false)
-  const [processList, setProcessList] = useState<ProcessInfo[]>([])
   const [uniqueNames, setUniqueNames] = useState<string[]>([])
   const [selectedName, setSelectedName] = useState<string>('')
+
+  const dbSyncInterval = useRef<number>()
 
 
   // Load apps
@@ -30,8 +45,33 @@ export default function TrackedAppList() {
     }
   }
 
+  // Load usage data
+  const loadUsage = async () => {
+    try {
+      const result = await invoke<AppUsage[]>('get_app_usage')
+      const lookup: Record<string, number> = {}
+      result.forEach((u) => {
+        lookup[u.name] = u.total_seconds
+      })
+      setUsage(lookup)
+    } catch (error) {
+      console.error('Failed to load usage: ', error)
+    }
+  }
+
   useEffect(() => {
     loadApps()
+    loadUsage()
+    
+    dbSyncInterval.current = window.setInterval(() => {
+      loadUsage()
+    }, 1000)
+    
+    return () => {
+      if (dbSyncInterval.current !== undefined) {
+        clearInterval(dbSyncInterval.current)
+      }
+    }
   }, [])
 
   // Add app handler
@@ -39,10 +79,8 @@ export default function TrackedAppList() {
     try {
       // Fetch running processes
       const procs = await invoke<ProcessInfo[]>('list_processes')
-      setProcessList(procs)
-
       // Get the unique process names (since there will probably be duplicates)
-      const names = Array.from(new Set(processList.map((p) => p.name))).sort()
+      const names = Array.from(new Set(procs.map((p) => p.name))).sort()
       setUniqueNames(names)
 
       if (names.length > 0) {
@@ -62,7 +100,8 @@ export default function TrackedAppList() {
     try {
       await invoke('add_app', { name: selectedName })
       setShowModal(false)
-      loadApps()
+      await loadApps()
+      await loadUsage()
     } catch (error) {
       console.error('Failed to add app: ', error)
     }
@@ -89,7 +128,12 @@ export default function TrackedAppList() {
             className='p-3 bg-gray-100 rounded-md flex justify-between items-center'
           >
             <span className='font-medium'>{app.name}</span>
-            <span className='text-sm text-gray-600'>#{app.id}</span>
+            {usage[app.name] !== undefined && (
+              <span className='ml-2 text-sm text-blue-600'>
+                {formatTime(usage[app.name])}
+              </span>
+            )}
+            
           </div>
         ))
       )}
