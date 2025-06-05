@@ -34,9 +34,10 @@ export default function TrackedAppList() {
   const [modalProcesses, setModalProcesses] = useState<ProcessInfo[]>([])
   const [selectedName, setSelectedName] = useState<string>('')
   const [appToDelete, setAppToDelete] = useState<TrackedApp | null>(null)
+  const [runningApps, setRunningApps] = useState<string[]>([])
 
   const dbSyncInterval = useRef<number>()
-
+  const runningAppsInterval = useRef<number>()
 
   // Load apps
   const loadApps = async () => {
@@ -62,17 +63,37 @@ export default function TrackedAppList() {
     }
   }
 
+  // Load running apps
+  const loadRunningApps = async () => {
+    try {
+      const procs = await invoke<ProcessInfo[]>('list_processes')
+      const runningNames = new Set(procs.map((p) => p.name))
+      setRunningApps(Array.from(runningNames))
+    } catch (error) {
+      console.error('Failed to load running process: ', error)
+    }
+  }
+
   useEffect(() => {
     loadApps()
     loadUsage()
+    loadRunningApps()
     
     dbSyncInterval.current = window.setInterval(() => {
       loadUsage()
+    }, 1000)
+
+    runningAppsInterval.current = window.setInterval(() => {
+      loadRunningApps()
     }, 1000)
     
     return () => {
       if (dbSyncInterval.current !== undefined) {
         clearInterval(dbSyncInterval.current)
+      }
+
+      if (runningAppsInterval.current !== undefined) {
+        clearInterval(runningAppsInterval.current)
       }
     }
   }, [])
@@ -167,6 +188,15 @@ export default function TrackedAppList() {
                 <div className='w-8 h-8 bg-gray-300 rounded' />
               )}
               <span className='font-medium'>{app.name}</span>
+              {runningApps.includes(app.name) ? (
+                <span className='px-2 py-0.5 text-xs font-semibold text-white bg-green-500 rounded-full'>
+                  Running
+                </span>
+              ) : (
+                <span className='px-2 py-0.5 text-xs font-semi-bold text-white bg-gray-400 rounded-full'>
+                  Stopped
+                </span>
+              )}
             </div>
             {usage[app.name] !== undefined && (
               <span className='ml-2 text-sm text-blue-600'>
