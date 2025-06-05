@@ -1,10 +1,6 @@
-import { useState } from 'react'
-import AppList, { TrackedApp } from './components/AppList'
+import TrackedAppList from './components/TrackedAppList';
 
 function App() {
-  // Placeholder
-  const [apps, setApps] = useState<TrackedApp[]>([])
-
   return (
     <div className='min-h-screen bg-white p-8'>
       <header className='max-w-4xl mx-auto mb-8'>
@@ -14,14 +10,7 @@ function App() {
         </p>
       </header>
       <main className='max-w-4xl mx-auto'>
-        <div className='flex justify-end mb-4'>
-          <button
-            className='px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition'
-          > 
-            + Add App
-          </button>
-        </div>
-        <AppList apps={apps} />
+        <TrackedAppList />
       </main>
     </div>
   )
