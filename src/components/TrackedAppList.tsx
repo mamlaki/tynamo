@@ -119,6 +119,9 @@ export default function TrackedAppList() {
         </button>
       </div>
       {/* App List */}
+      { apps.length > 0 && (
+        <h2 className='mb-3 text-lg font-semibold text-gray-700'>Apps being tracked:</h2>
+      )}
       {apps.length === 0 ? (
         <p className='text-gray-500'>You are not tracking any apps.</p>
       ) : (
@@ -126,21 +129,20 @@ export default function TrackedAppList() {
           <div
             key={app.id}
             className='p-3 bg-gray-100 rounded-md flex justify-between items-center'
-          >
+          > 
             <span className='font-medium'>{app.name}</span>
             {usage[app.name] !== undefined && (
               <span className='ml-2 text-sm text-blue-600'>
                 {formatTime(usage[app.name])}
               </span>
             )}
-            
           </div>
         ))
       )}
 
       {/* Modal */}
       {showModal && (
-        <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-999'>
+        <div className='fixed inset-0 bg-black/50 flex items-center justify-center z-999'>
           <div className='bg-white p-6 rounded-lg w-80'>
             <h2 className='text-lg font-semibold mb-4'>
               Select an App
