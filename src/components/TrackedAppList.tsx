@@ -38,6 +38,8 @@ export default function TrackedAppList() {
 
   const dbSyncInterval = useRef<number>()
   const runningAppsInterval = useRef<number>()
+  const addModalRef = useRef<HTMLDivElement>(null)
+  const deleteModalRef = useRef<HTMLDivElement>(null)
 
   // Load apps
   const loadApps = async () => {
@@ -95,6 +97,38 @@ export default function TrackedAppList() {
       if (runningAppsInterval.current !== undefined) {
         clearInterval(runningAppsInterval.current)
       }
+    }
+  }, [])
+
+  // Handle modal close
+  useEffect(() => {
+    // Handle key presses (escape to close modals)
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowModal(false)
+        setAppToDelete(null)
+      }
+    }
+
+    // Handle clicking outside of modals
+    const handleClickOutside = (e: MouseEvent) => {
+      // Add App Modal
+      if (addModalRef.current && !addModalRef.current.contains(e.target as Node)) {
+        setShowModal(false)
+      }
+
+      // Delete/Remove App Modal
+      if (deleteModalRef.current && !deleteModalRef.current.contains(e.target as Node)) {
+        setAppToDelete(null)
+      }
+    } 
+
+    document.addEventListener('keydown', handleKeyDown)
+    document.addEventListener('mousedown', handleClickOutside)
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+      document.removeEventListener('mousedown', handleClickOutside)
     }
   }, [])
 
@@ -213,10 +247,10 @@ export default function TrackedAppList() {
         ))
       )}
 
-      {/* Modal */}
+      {/* Add App Modal */}
       {showModal && (
         <div className='fixed inset-0 bg-black/50 flex items-center justify-center z-999'>
-          <div className='bg-white p-6 rounded-lg w-80'>
+          <div ref={addModalRef} className='bg-white p-6 rounded-lg w-80'>
             <h2 className='text-lg font-semibold mb-4'>
               Select an App
             </h2>
@@ -252,7 +286,7 @@ export default function TrackedAppList() {
       {/* Delete Modal */}
       {appToDelete && (
         <div className='fixed inset-0 bg-black/50 flex items-center justify-center z-999'>
-          <div className='bg-white p-6 rounded-lg w-96 shadow-lg'>
+          <div ref={deleteModalRef} className='bg-white p-6 rounded-lg w-96 shadow-lg'>
             <h2 className='text-lg font-semibold mb-2'>
               Remove '{appToDelete.name}'
             </h2>
