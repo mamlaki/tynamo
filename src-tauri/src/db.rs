@@ -103,6 +103,25 @@ pub fn add_app(app: AppHandle, name: String, exe_path: String) -> Result<(), Str
   Ok(())
 }
 
+// Remove app from tracked_apps
+#[tauri::command]
+pub fn remove_app(app: AppHandle, name: String, delete_usage: bool) -> Result<(), String> {
+  let mut conn = get_connection(&app)?;
+  let tx = conn.transaction().map_err(|e| e.to_string())?;
+
+  tx.execute("DELETE FROM tracked_apps WHERE name = ?1", params![name])
+    .map_err(|e| e.to_string())?;
+
+  if delete_usage {
+    tx.execute("DELETE FROM app_usage WHERE name = ?1", params![name])
+      .map_err(|e| e.to_string())?;
+  }
+
+  tx.commit().map_err(|e| e.to_string())?;
+
+  Ok(())
+}
+
 // Get the apps in the tracked_app table
 #[tauri::command]
 pub fn get_tracked_apps(app: AppHandle) -> Result<Vec<TrackedApps>, String> {

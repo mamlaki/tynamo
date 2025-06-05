@@ -33,6 +33,7 @@ export default function TrackedAppList() {
   const [showModal, setShowModal] = useState(false)
   const [modalProcesses, setModalProcesses] = useState<ProcessInfo[]>([])
   const [selectedName, setSelectedName] = useState<string>('')
+  const [appToDelete, setAppToDelete] = useState<TrackedApp | null>(null)
 
   const dbSyncInterval = useRef<number>()
 
@@ -103,6 +104,20 @@ export default function TrackedAppList() {
     }
   }
 
+  // Remove app handler
+  const handleRemove = async (deleteUsage: boolean) => {
+    if (!appToDelete) return
+
+    try {
+      await invoke('remove_app', { name: appToDelete.name, deleteUsage })
+      setAppToDelete(null)
+      await loadApps()
+      await loadUsage()
+    } catch (error) {
+      console.error('Failed to remove app: ', error)
+    }
+  }
+
   // Modal handler
   const handleModalAdd = async () => {
     if (!selectedName) return
@@ -158,6 +173,12 @@ export default function TrackedAppList() {
                 {formatTime(usage[app.name])}
               </span>
             )}
+            <button
+              onClick={() => setAppToDelete(app)}  
+              className='px-3 py-1 bg-red-600 text-white rounded-md hover:bg-red-700 transition text-xs'
+            > 
+              Remove
+            </button>
           </div>
         ))
       )}
@@ -195,6 +216,41 @@ export default function TrackedAppList() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Delete Modal */}
+      {appToDelete && (
+        <div className='fixed inset-0 bg-black/50 flex items-center justify-center z-999'>
+          <div className='bg-white p-6 rounded-lg w-96 shadow-lg'>
+            <h2 className='text-lg font-semibold mb-2'>
+              Remove '{appToDelete.name}'
+            </h2>
+            <p className='mb-6 text-gray-700'>
+              Do you want to delete the tracked time for {appToDelete.name} as well?
+            </p>
+            <div className='flex justify-end space-x-3'>
+              <button
+                onClick={() => handleRemove(false)}
+                className='px-4 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 transition'
+              >
+                No
+              </button>
+              <button
+                onClick={() => handleRemove(true)}
+                className='px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition'
+              >
+                Yes
+              </button>
+              <button
+                onClick={() => setAppToDelete(null)}
+                className='px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition'
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+
         </div>
       )}
     </div>

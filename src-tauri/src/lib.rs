@@ -7,7 +7,7 @@ mod process;
 use process::list_processes;
 
 mod db;
-use db::{add_app, get_tracked_apps, get_app_usage, increment_usage_for_running_apps};
+use db::{add_app, remove_app, get_tracked_apps, get_app_usage, increment_usage_for_running_apps};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -48,6 +48,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             list_processes,
             add_app,
+            remove_app,
             get_tracked_apps,
             get_app_usage,
             increment_usage_for_running_apps
