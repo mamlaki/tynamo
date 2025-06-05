@@ -4,11 +4,13 @@ import { invoke } from '@tauri-apps/api/core'
 type ProcessInfo = {
   pid: number
   name: string
+  exe_path: string
 }
 
 export type TrackedApp = {
   id: number
   name: string
+  icon: string | null
 }
 
 type AppUsage = {
@@ -29,7 +31,7 @@ export default function TrackedAppList() {
   const [usage, setUsage] = useState<Record<string, number>>({});
 
   const [showModal, setShowModal] = useState(false)
-  const [uniqueNames, setUniqueNames] = useState<string[]>([])
+  const [modalProcesses, setModalProcesses] = useState<ProcessInfo[]>([])
   const [selectedName, setSelectedName] = useState<string>('')
 
   const dbSyncInterval = useRef<number>()
@@ -80,11 +82,18 @@ export default function TrackedAppList() {
       // Fetch running processes
       const procs = await invoke<ProcessInfo[]>('list_processes')
       // Get the unique process names (since there will probably be duplicates)
-      const names = Array.from(new Set(procs.map((p) => p.name))).sort()
-      setUniqueNames(names)
+      const processMap = new Map<string, ProcessInfo>()
+      for (const p of procs) {
+        if (!processMap.has(p.name)) {
+          processMap.set(p.name, p)
+        }
+      }
 
-      if (names.length > 0) {
-        setSelectedName(names[0])
+      const uniqueProcs = Array.from(processMap.values()).sort((a, b) => a.name.localeCompare(b.name))
+      setModalProcesses(uniqueProcs)
+
+      if (uniqueProcs.length > 0) {
+        setSelectedName(uniqueProcs[0].name)
       }
 
       setShowModal(true)
@@ -97,8 +106,10 @@ export default function TrackedAppList() {
   // Modal handler
   const handleModalAdd = async () => {
     if (!selectedName) return
+    const process = modalProcesses.find(p => p.name == selectedName)
+    if (!process) return
     try {
-      await invoke('add_app', { name: selectedName })
+      await invoke('add_app', { name: selectedName, exePath: process.exe_path })
       setShowModal(false)
       await loadApps()
       await loadUsage()
@@ -130,7 +141,18 @@ export default function TrackedAppList() {
             key={app.id}
             className='p-3 bg-gray-100 rounded-md flex justify-between items-center'
           > 
-            <span className='font-medium'>{app.name}</span>
+            <div className='flex items-center space-x-3'>
+              {app.icon ? (
+                <img 
+                  src={`data:image/png;base64,${app.icon}`} 
+                  alt={app.name} 
+                  className='w-8 h-8' 
+                />
+              ) : (
+                <div className='w-8 h-8 bg-gray-300 rounded' />
+              )}
+              <span className='font-medium'>{app.name}</span>
+            </div>
             {usage[app.name] !== undefined && (
               <span className='ml-2 text-sm text-blue-600'>
                 {formatTime(usage[app.name])}
@@ -152,9 +174,9 @@ export default function TrackedAppList() {
               onChange={(e) => setSelectedName(e.currentTarget.value)}
               className='w-full border-gray-300 rounded-md mb-4 p-2'
             >
-              {uniqueNames.map((name) => (
-                <option key={name} value={name}>
-                  {name}
+              {modalProcesses.map((proc) => (
+                <option key={proc.name} value={proc.name}>
+                  {proc.name}
                 </option>
               ))}
             </select>

@@ -3,10 +3,17 @@ use serde::Serialize;
 use sysinfo::{ProcessesToUpdate, System};
 use tauri::{AppHandle, Manager};
 
+use std::path::Path;
+use std::fs::File;
+use plist::Value;
+use base64::{engine::general_purpose, Engine as _};
+use icns::IconFamily;
+
 #[derive(Serialize)]
 pub struct TrackedApps {
   pub id: i64,
-  pub name: String
+  pub name: String,
+  pub icon: Option<String>
 }
 
 #[derive(Serialize)]
@@ -31,7 +38,8 @@ fn get_connection(app: &AppHandle) -> Result<Connection, String> {
   conn.execute(
     "CREATE TABLE IF NOT EXISTS tracked_apps (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL
+      name TEXT NOT NULL UNIQUE,
+      icon TEXT
     )",
     []
   ).map_err(|e| e.to_string())?;
@@ -48,14 +56,48 @@ fn get_connection(app: &AppHandle) -> Result<Connection, String> {
   Ok(conn)
 }
 
+// Get app icon
+fn get_icon_base64(exe_path: &str) -> Option<String> {
+  if !cfg!(target_os = "macos") {
+    return None;
+  }
+
+  let path = Path::new(exe_path);
+  let app_bundle_path = path.ancestors().find(|p| p.extension().map_or(false, |e| e == "app"))?;
+  let info_plist_path = app_bundle_path.join("Contents/Info.plist");
+  let plist_val = Value::from_file(&info_plist_path).ok()?;
+
+  let icon_file_name = plist_val
+    .as_dictionary()
+    .and_then(|dict| dict.get("CFBundleIconFile"))
+    .and_then(|val| val.as_string())?;
+
+  let mut icon_path = app_bundle_path.join("Contents/Resources").join(icon_file_name);
+  if icon_path.extension().is_none() {
+    icon_path.set_extension("icns");
+  }
+
+  let mut icns_file = File::open(&icon_path).ok()?;
+  let icon_family = IconFamily::read(&mut icns_file).ok()?;
+
+  let best_icon = icon_family.elements
+    .iter()
+    .max_by_key(|icon| icon.icon_type().map_or(0, |t| t.pixel_width()))?;
+
+  Some(general_purpose::STANDARD.encode(&best_icon.data))
+
+}
+
 // Add app to tracked_apps table
 #[tauri::command]
-pub fn add_app(app: AppHandle, name: String) -> Result<(), String> {
+pub fn add_app(app: AppHandle, name: String, exe_path: String) -> Result<(), String> {
   let conn = get_connection(&app)?;
+  let icon_base64 = get_icon_base64(&exe_path);
 
   conn.execute(
-    "INSERT INTO tracked_apps (name) VALUES (?1)",
-    params![name],
+    "INSERT INTO tracked_apps (name, icon) VALUES (?1, ?2)
+    ON CONFLICT(name) DO UPDATE SET icon=excluded.icon",
+    params![name, icon_base64],
   ).map_err(|e| e.to_string())?;
 
   Ok(())
@@ -65,12 +107,13 @@ pub fn add_app(app: AppHandle, name: String) -> Result<(), String> {
 #[tauri::command]
 pub fn get_tracked_apps(app: AppHandle) -> Result<Vec<TrackedApps>, String> {
   let conn = get_connection(&app)?;
-  let mut stmt = conn.prepare("SELECT id, name FROM tracked_apps").map_err(|e| e.to_string())?;
+  let mut stmt = conn.prepare("SELECT id, name, icon FROM tracked_apps").map_err(|e| e.to_string())?;
 
   let apps_iter = stmt.query_map([], |row| {
     Ok(TrackedApps {
       id: row.get(0)?,
-      name: row.get(1)?
+      name: row.get(1)?,
+      icon: row.get(2)?
     })
   }).map_err(|e| e.to_string())?;
 
