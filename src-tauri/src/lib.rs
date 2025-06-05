@@ -2,7 +2,6 @@ use crossbeam_channel::unbounded;
 use std::thread;
 use std::time::Duration;
 use tauri::RunEvent;
-use tauri::AppHandle;
 
 mod process;
 use process::list_processes;
@@ -60,7 +59,7 @@ pub fn run() {
 
         app.run(move |_app_handle, event| {
             match event {
-                RunEvent::ExitRequested { api, .. } => {
+                RunEvent::ExitRequested { .. } => {
                     println!("App exit requested. Send shutdown signal.");
                     let _ = tx_for_exit_signal.send(());
                 } 

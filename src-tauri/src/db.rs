@@ -1,7 +1,7 @@
 use rusqlite::{params, Connection, Result};
 use serde::Serialize;
 use sysinfo::{ProcessesToUpdate, System};
-use tauri::{App, AppHandle, Manager};
+use tauri::{AppHandle, Manager};
 
 #[derive(Serialize)]
 pub struct TrackedApps {
@@ -140,7 +140,7 @@ pub fn increment_usage_for_running_apps(app: AppHandle) -> Result<(), String> {
 // Get app usage
 #[tauri::command]
 pub fn get_app_usage(app: AppHandle) -> Result<Vec<AppUsage>, String> {
-  let mut conn = get_connection(&app)?;
+  let conn = get_connection(&app)?;
   let mut stmt = conn.prepare("SELECT name, total_seconds FROM app_usage").map_err(|e| e.to_string())?;
 
   let usage_iter = stmt
