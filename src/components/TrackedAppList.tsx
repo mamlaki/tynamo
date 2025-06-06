@@ -14,16 +14,17 @@ export type TrackedApp = {
 }
 
 type AppUsage = {
-  name: string;
-  total_seconds: number;
+  name: string
+  total_seconds: number
+  paused: boolean
 }
 
 // Format time for ui utility
 const formatTime = (secs: number): string => {
-  const h = Math.floor(secs / 3600);
-  const m = Math.floor((secs % 3600) / 60);
-  const s = secs % 60;
-  return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  const h = Math.floor(secs / 3600)
+  const m = Math.floor((secs % 3600) / 60)
+  const s = secs % 60
+  return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
 }
 
 const timeStringToSeconds = (timeStr: string): number => {
@@ -36,6 +37,7 @@ const timeStringToSeconds = (timeStr: string): number => {
 export default function TrackedAppList() {
   const [apps, setApps] = useState<TrackedApp[]>([])
   const [usage, setUsage] = useState<Record<string, number>>({});
+  const [pausedApps, setPausedApps] = useState<Record<string, boolean>>({});
 
   const [showModal, setShowModal] = useState(false)
   const [modalProcesses, setModalProcesses] = useState<ProcessInfo[]>([])
@@ -66,10 +68,13 @@ export default function TrackedAppList() {
     try {
       const result = await invoke<AppUsage[]>('get_app_usage')
       const lookup: Record<string, number> = {}
+      const pausedLookup: Record<string, boolean> = {}
       result.forEach((u) => {
         lookup[u.name] = u.total_seconds
+        pausedLookup[u.name] = u.paused
       })
       setUsage(lookup)
+      setPausedApps(pausedLookup)
     } catch (error) {
       console.error('Failed to load usage: ', error)
     }
@@ -217,6 +222,16 @@ export default function TrackedAppList() {
     setEditTimeValue('00:00:00')
   }
 
+  // Pause time handler
+  const handlePause = async (app: TrackedApp) => {
+    try {
+      const newPausedState = await invoke<boolean>('pause_app', { name: app.name })
+      setPausedApps(prev => ({ ...prev, [app.name]: newPausedState}))
+    } catch (error) {
+      console.error('Failed to toggle pause: ', error)
+    }
+  }
+
 
   // Modal handler
   const handleModalAdd = async () => {
@@ -276,6 +291,11 @@ export default function TrackedAppList() {
                   Stopped
                 </span>
               )}
+              {pausedApps[app.name] && (
+                <span className='px-2 py-0.5 text-xs font-semi-bold text-white bg-yellow-400 rounded-full'>
+                  Paused
+                </span>
+              )}
             </div>
             <div className='flex items-center space-x-3'> 
 
@@ -285,6 +305,18 @@ export default function TrackedAppList() {
                   {formatTime(usage[app.name])}
                 </span>
               )}
+
+              {/* PAUSE TOGGLE BUTTON */}
+              <button
+                onClick={() => handlePause(app)}
+                className={`px-3 py-1 text-white rounded-md transition text-xs cursor-pointer ${
+                  pausedApps[app.name] 
+                  ? 'bg-blue-500 hover:bg-blue-600' 
+                  : 'bg-yellow-500 hover:bg-yellow-600'
+                }`}
+              > 
+                {pausedApps[app.name] ? 'Resume' : 'Pause'}
+              </button>
 
               {/* EDIT BUTTON */}
               <button

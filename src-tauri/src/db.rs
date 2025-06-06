@@ -19,7 +19,8 @@ pub struct TrackedApps {
 #[derive(Serialize)]
 pub struct AppUsage {
   pub name: String,
-  pub total_seconds: i64
+  pub total_seconds: i64,
+  pub paused: bool
 }
 
 fn get_connection(app: &AppHandle) -> Result<Connection, String> {
@@ -48,10 +49,16 @@ fn get_connection(app: &AppHandle) -> Result<Connection, String> {
   conn.execute(
     "CREATE TABLE IF NOT EXISTS app_usage (
       name TEXT PRIMARY KEY,
-      total_seconds INTEGER NOT NULL DEFAULT 0
+      total_seconds INTEGER NOT NULL DEFAULT 0,
+      paused INTEGER NOT NULL DEFAULT 0
     )",
     []
   ).map_err(|e| e.to_string())?;
+
+  // Add paused column to existing tables (if it doesn't exist)
+  conn.execute(
+    "ALTER TABLE app_usage ADD COLUMN paused INTEGER NOT NULL DEFAULT 0", []
+  ).ok();
 
   Ok(conn)
 }
@@ -122,7 +129,7 @@ pub fn remove_app(app: AppHandle, name: String, delete_usage: bool) -> Result<()
   Ok(())
 }
 
-// Update app (just time for now
+// Update app (just time for now)
 #[tauri::command]
 pub fn update_app(app: AppHandle, name: String, total_seconds: i64) -> Result<(), String> {
   let conn = get_connection(&app)?;
@@ -134,6 +141,43 @@ pub fn update_app(app: AppHandle, name: String, total_seconds: i64) -> Result<()
   ).map_err(|e| e.to_string())?;
 
   Ok(())
+}
+
+// Paused app
+#[tauri::command]
+pub fn pause_app(app: AppHandle, name: String) -> Result<bool, String> {
+  let conn = get_connection(&app)?;
+
+  let mut stmt = conn.prepare("SELECT paused FROM app_usage WHERE name = ?1").map_err(|e| e.to_string())?;
+  let current_paused: bool = stmt.query_row(params![name], |row| {
+    let paused_int: i64 = row.get(0)?;
+    Ok(paused_int == 1)
+  }).unwrap_or(false);
+
+  let new_paused = !current_paused;
+
+  conn.execute(
+    "INSERT INTO app_usage (name, total_seconds, paused) VALUES (?1, 0, ?2)
+    ON CONFLICT(name) DO UPDATE SET paused = ?2",
+    params![name, if new_paused { 1 } else { 0 }]
+  ).map_err(|e| e.to_string())?;
+
+  Ok(new_paused)
+}
+
+// Get paused app list
+pub fn get_paused_appnames(app: &AppHandle) -> Result<Vec<String>, String> {
+  let conn = get_connection(app)?;
+  let mut stmt = conn.prepare("SELECT name FROM app_usage WHERE paused = 1").map_err(|e| e.to_string())?;
+  let mut rows = stmt.query([]).map_err(|e| e.to_string())?;
+
+  let mut names = Vec::new();
+  while let Some(row) = rows.next().map_err(|e| e.to_string())? {
+    let name: String = row.get(0).map_err(|e| e.to_string())?;
+    names.push(name)
+  }
+
+  Ok(names)
 }
 
 // Get the apps in the tracked_app table
@@ -184,10 +228,14 @@ pub fn increment_usage_for_running_apps(app: AppHandle) -> Result<(), String> {
     return Ok(());
   }
 
+  // Get paused apps
+  let paused_names = get_paused_appnames(&app)?;
+  let paused_set: std::collections::HashSet<String> = paused_names.into_iter().collect();
+
   // Fetch running processes
   let mut sys = System::new_all();
   sys.refresh_processes(ProcessesToUpdate::All, true);
-
+  
   let running_names: std::collections::HashSet<String> = sys.processes().iter()
     .map(|(_, process)| process.name().to_string_lossy().into_owned()).collect();
 
@@ -197,9 +245,9 @@ pub fn increment_usage_for_running_apps(app: AppHandle) -> Result<(), String> {
   // Add time
   let tx = conn.transaction().map_err(|e| e.to_string())?;
   for name in names {
-    if running_names.contains(&name) {
+    if running_names.contains(&name) && !paused_set.contains(&name) {
       tx.execute(
-        "INSERT INTO app_usage (name, total_seconds) VALUES (?1, 1)
+        "INSERT INTO app_usage (name, total_seconds, paused) VALUES (?1, 1, 0)
           ON CONFLICT(name) DO UPDATE SET total_seconds = total_seconds + 1",
           params![name]
       ).map_err(|e| e.to_string())?;
@@ -217,13 +265,15 @@ pub fn increment_usage_for_running_apps(app: AppHandle) -> Result<(), String> {
 #[tauri::command]
 pub fn get_app_usage(app: AppHandle) -> Result<Vec<AppUsage>, String> {
   let conn = get_connection(&app)?;
-  let mut stmt = conn.prepare("SELECT name, total_seconds FROM app_usage").map_err(|e| e.to_string())?;
-
+  let mut stmt = conn.prepare("SELECT name, total_seconds, COALESCE(paused, 0) FROM app_usage").map_err(|e| e.to_string())?;
+  
   let usage_iter = stmt
     .query_map([], |row| {
+      let paused_int: i64 = row.get(2)?;
       Ok(AppUsage {
         name: row.get(0)?,
-        total_seconds: row.get(1)?
+        total_seconds: row.get(1)?,
+        paused: paused_int == 1
       })
     }).map_err(|e| e.to_string())?;
 
