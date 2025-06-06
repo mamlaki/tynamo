@@ -1,8 +1,9 @@
 import { useEffect, useState, useRef } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import TrackedAppRow from './TrackedAppRow'
+import AddAppModal from './AddAppModal'
 
-type ProcessInfo = {
+export type ProcessInfo = {
   pid: number
   name: string
   exe_path: string
@@ -265,7 +266,7 @@ export default function TrackedAppList() {
           Add App
         </button>
       </div>
-      
+
       {/* App List */}
       { apps.length > 0 && (
         <h2 className='mb-3 text-lg font-semibold text-gray-700'>Apps being tracked:</h2>
@@ -290,38 +291,15 @@ export default function TrackedAppList() {
 
       {/* ADD APP MODAL */}
       {showModal && (
-        <div className='fixed inset-0 bg-black/50 flex items-center justify-center z-999'>
-          <div ref={addModalRef} className='bg-white p-6 rounded-lg w-80'>
-            <h2 className='text-lg font-semibold mb-4'>
-              Select an App
-            </h2>
-            <select
-              value={selectedName}
-              onChange={(e) => setSelectedName(e.currentTarget.value)}
-              className='w-full border-gray-300 rounded-md mb-4 p-2'
-            >
-              {modalProcesses.map((proc) => (
-                <option key={proc.name} value={proc.name}>
-                  {proc.name}
-                </option>
-              ))}
-            </select>
-            <div className='flex jusity-end space-x-2'>
-              <button
-                onClick={() => setShowModal(false)}
-                className='px-4 py-2 bg-gray-300 text-gray-800 rounded-md hover:bg-gray-400 transition cursor-pointer'
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleModalAdd}
-                className='px-4 py-2 bg-emerald-500 text-white rounded-md hover:bg-emerald-600 transition cursor-pointer'
-              >   
-                Add
-              </button>
-            </div>
-          </div>
-        </div>
+       <AddAppModal 
+        show={showModal}
+        processes={modalProcesses}
+        selectedName={selectedName}
+        setSelectedName={setSelectedName}
+        onAdd={handleModalAdd}
+        onClose={() => setShowModal(false)}
+        modalRef={addModalRef}
+       />
       )}
 
 
