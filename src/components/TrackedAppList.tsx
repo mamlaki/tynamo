@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { invoke } from '@tauri-apps/api/core'
+import TrackedAppRow from './TrackedAppRow'
 
 type ProcessInfo = {
   pid: number
@@ -264,6 +265,7 @@ export default function TrackedAppList() {
           Add App
         </button>
       </div>
+      
       {/* App List */}
       { apps.length > 0 && (
         <h2 className='mb-3 text-lg font-semibold text-gray-700'>Apps being tracked:</h2>
@@ -272,76 +274,18 @@ export default function TrackedAppList() {
         <p className='text-gray-500'>You are not tracking any apps.</p>
       ) : (
         apps.map((app) => (
-          <div
+          <TrackedAppRow 
             key={app.id}
-            className='p-3 bg-gray-100 rounded-md flex justify-between items-center'
-          > 
-            <div className='flex items-center space-x-3'>
-              {app.icon ? (
-                <img 
-                  src={`data:image/png;base64,${app.icon}`} 
-                  alt={app.name} 
-                  className='w-8 h-8' 
-                />
-              ) : (
-                <div className='w-8 h-8 bg-gray-300 rounded' />
-              )}
-              <span className='font-medium'>{app.display_name || app.name}</span>
-              {runningApps.includes(app.name) ? (
-                <span className='px-2 py-0.5 text-xs font-semibold text-white bg-emerald-500 rounded-full'>
-                  Running
-                </span>
-              ) : (
-                <span className='px-2 py-0.5 text-xs font-semi-bold text-white bg-gray-400 rounded-full'>
-                  Stopped
-                </span>
-              )}
-              {pausedApps[app.name] && (
-                <span className='px-2 py-0.5 text-xs font-semi-bold text-white bg-yellow-400 rounded-full'>
-                  Paused
-                </span>
-              )}
-            </div>
-            <div className='flex items-center space-x-3'> 
-
-              {/* USAGE TIME */}
-              {usage[app.name] !== undefined && (
-                <span className='ml-2 text-sm text-blue-500'>
-                  {formatTime(usage[app.name])}
-                </span>
-              )}
-
-              {/* PAUSE TOGGLE BUTTON */}
-              <button
-                onClick={() => handlePause(app)}
-                className={`px-3 py-1 text-white rounded-md transition text-xs cursor-pointer ${
-                  pausedApps[app.name] 
-                  ? 'bg-blue-500 hover:bg-blue-600' 
-                  : 'bg-yellow-500 hover:bg-yellow-600'
-                }`}
-              > 
-                {pausedApps[app.name] ? 'Resume' : 'Pause'}
-              </button>
-
-              {/* EDIT BUTTON */}
-              <button
-                onClick={() => handleEdit(app)}
-                className='px-3 py-1 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition text-xs cursor-pointer'
-              > 
-                Edit
-              </button>
-
-              {/* DELETE BUTTON */}
-              <button
-                onClick={() => setAppToDelete(app)}  
-                className='px-3 py-1 bg-rose-500 text-white rounded-md hover:bg-rose-600 transition text-xs cursor-pointer'
-              > 
-                Remove
-              </button>  
-
-            </div>
-          </div>
-        ))
+            app ={app}
+            usage={usage[app.name]}
+            paused={pausedApps[app.name]}
+            running={runningApps.includes(app.name)}
+            onPause={handlePause}
+            onEdit={handleEdit}
+            onDelete={setAppToDelete}
+            formatTime={formatTime}
+          />
+        ))  
       )}
 
       {/* ADD APP MODAL */}
