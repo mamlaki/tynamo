@@ -212,6 +212,11 @@ export default function TrackedAppList() {
     }
   }
 
+  // Reset app usage time handler
+  const handleReset = () => {
+    setEditTimeValue('00:00:00')
+  }
+
 
   // Modal handler
   const handleModalAdd = async () => {
@@ -362,6 +367,12 @@ export default function TrackedAppList() {
               </p>
             </div>
             <div className='flex items-center space-x-3'>
+              <button
+                onClick={handleReset}
+                className='px-4 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 transition'
+              > 
+                Reset Time
+              </button>
               <button
                 onClick={() => setAppToEdit(null)}
                 className='px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition'
