@@ -239,7 +239,7 @@ export default function TrackedAppList() {
       <div className='flex justify-end'>
         <button
           onClick={handleAdd}
-          className='px-4 py-2 bg-emerald-500 text-white rounded-md hover:bg-emerald-600 transition'
+          className='px-4 py-2 bg-emerald-500 text-white rounded-md hover:bg-emerald-600 transition cursor-pointer'
         > 
           Add App
         </button>
@@ -289,7 +289,7 @@ export default function TrackedAppList() {
               {/* EDIT BUTTON */}
               <button
                 onClick={() => handleEdit(app)}
-                className='px-3 py-1 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition text-xs'
+                className='px-3 py-1 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition text-xs cursor-pointer'
               > 
                 Edit
               </button>
@@ -297,7 +297,7 @@ export default function TrackedAppList() {
               {/* DELETE BUTTON */}
               <button
                 onClick={() => setAppToDelete(app)}  
-                className='px-3 py-1 bg-rose-500 text-white rounded-md hover:bg-rose-600 transition text-xs'
+                className='px-3 py-1 bg-rose-500 text-white rounded-md hover:bg-rose-600 transition text-xs cursor-pointer'
               > 
                 Remove
               </button>  
@@ -328,13 +328,13 @@ export default function TrackedAppList() {
             <div className='flex jusity-end space-x-2'>
               <button
                 onClick={() => setShowModal(false)}
-                className='px-4 py-2 bg-gray-300 text-gray-800 rounded-md hover:bg-gray-400 transition'
+                className='px-4 py-2 bg-gray-300 text-gray-800 rounded-md hover:bg-gray-400 transition cursor-pointer'
               >
                 Cancel
               </button>
               <button
                 onClick={handleModalAdd}
-                className='px-4 py-2 bg-emerald-500 text-white rounded-md hover:bg-emerald-600 transition'
+                className='px-4 py-2 bg-emerald-500 text-white rounded-md hover:bg-emerald-600 transition cursor-pointer'
               >   
                 Add
               </button>
@@ -369,19 +369,19 @@ export default function TrackedAppList() {
             <div className='flex items-center space-x-3'>
               <button
                 onClick={handleReset}
-                className='px-4 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 transition'
+                className='px-4 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 transition cursor-pointer'
               > 
                 Reset Time
               </button>
               <button
                 onClick={() => setAppToEdit(null)}
-                className='px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition'
+                className='px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition cursor-pointer'
               >
                 Cancel
               </button>
               <button
                 onClick={handleSaveEdit}
-                className='px-4 py-2 bg-emerald-500 text-white rounded-md hover:bg-emerald-600 transition'
+                className='px-4 py-2 bg-emerald-500 text-white rounded-md hover:bg-emerald-600 transition cursor-pointer'
               >
                 Save
               </button>
@@ -404,19 +404,19 @@ export default function TrackedAppList() {
             <div className='flex justify-end space-x-3'>
               <button
                 onClick={() => handleRemove(false)}
-                className='px-4 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 transition'
+                className='px-4 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 transition cursor-pointer'
               >
                 No
               </button>
               <button
                 onClick={() => handleRemove(true)}
-                className='px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition'
+                className='px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition cursor-pointer'
               >
                 Yes
               </button>
               <button
                 onClick={() => setAppToDelete(null)}
-                className='px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition'
+                className='px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition cursor-pointer'
               >
                 Cancel
               </button>
