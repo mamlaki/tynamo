@@ -11,6 +11,7 @@ export type TrackedApp = {
   id: number
   name: string
   icon: string | null
+  display_name?: string | null
 }
 
 type AppUsage = {
@@ -44,6 +45,7 @@ export default function TrackedAppList() {
   const [selectedName, setSelectedName] = useState<string>('')
   const [appToDelete, setAppToDelete] = useState<TrackedApp | null>(null)
   const [appToEdit, setAppToEdit] = useState<TrackedApp | null> (null)
+  const [editDisplayName, setEditDisplayName] = useState<string>('')
   const [editTimeValue, setEditTimeValue] = useState<string>('')
   const [runningApps, setRunningApps] = useState<string[]>([])
 
@@ -199,6 +201,7 @@ export default function TrackedAppList() {
     setAppToEdit(app)
     const currentUsage = usage[app.name]
     setEditTimeValue(formatTime(currentUsage))
+    setEditDisplayName(app.display_name || '')
   }
 
   // Save edit app handler
@@ -210,7 +213,9 @@ export default function TrackedAppList() {
 
     try {
       await invoke('update_app', { name: appToEdit.name, totalSeconds: newSeconds })
+      await invoke('update_display_name', { name: appToEdit.name, displayName: editDisplayName })
       setAppToEdit(null)
+      await loadApps()
       await loadUsage()
     } catch(error) {
       console.error('Failed to update app time: ', error)
@@ -281,7 +286,7 @@ export default function TrackedAppList() {
               ) : (
                 <div className='w-8 h-8 bg-gray-300 rounded' />
               )}
-              <span className='font-medium'>{app.name}</span>
+              <span className='font-medium'>{app.display_name || app.name}</span>
               {runningApps.includes(app.name) ? (
                 <span className='px-2 py-0.5 text-xs font-semibold text-white bg-emerald-500 rounded-full'>
                   Running
@@ -397,6 +402,18 @@ export default function TrackedAppList() {
               <p className='text-xs text-gray-500 mt-1'>
                 (e.g., 01:30:15 for 1 hour, 30 minutes, 15 seconds)
               </p>
+            </div>
+            <div className="mb-4">
+              <label className='block text-sm font-medium text-gray-700 mb-2'>
+                Edit Display Name:
+              </label>
+              <input 
+                type="text" 
+                value={editDisplayName}
+                onChange={(e) => setEditDisplayName(e.target.value)}
+                placeholder={appToEdit.name}
+                className='w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'
+              />
             </div>
             <div className='flex items-center space-x-3'>
               <button

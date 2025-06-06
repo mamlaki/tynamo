@@ -13,7 +13,8 @@ use icns::IconFamily;
 pub struct TrackedApps {
   pub id: i64,
   pub name: String,
-  pub icon: Option<String>
+  pub icon: Option<String>,
+  pub display_name: Option<String>
 }
 
 #[derive(Serialize)]
@@ -40,7 +41,8 @@ fn get_connection(app: &AppHandle) -> Result<Connection, String> {
     "CREATE TABLE IF NOT EXISTS tracked_apps (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL UNIQUE,
-      icon TEXT
+      icon TEXT,
+      display_name TEXT
     )",
     []
   ).map_err(|e| e.to_string())?;
@@ -55,9 +57,14 @@ fn get_connection(app: &AppHandle) -> Result<Connection, String> {
     []
   ).map_err(|e| e.to_string())?;
 
-  // Add paused column to existing tables (if it doesn't exist)
+  // Add paused column to existing rows (if it doesn't exist)
   conn.execute(
     "ALTER TABLE app_usage ADD COLUMN paused INTEGER NOT NULL DEFAULT 0", []
+  ).ok();
+
+  // Add display_name column to existing rows (if it doesn't exist)
+  conn.execute(
+    "ALTER TABLE tracked_apps ADD COLUMN display_name TEXT", []
   ).ok();
 
   Ok(conn)
@@ -143,7 +150,20 @@ pub fn update_app(app: AppHandle, name: String, total_seconds: i64) -> Result<()
   Ok(())
 }
 
-// Paused app
+// Update app display name
+#[tauri::command]
+pub fn update_display_name(app: AppHandle, name: String, display_name: String) -> Result<(), String> {
+  let conn = get_connection(&app)?;
+
+  conn.execute(
+    "UPDATE tracked_apps SET display_name = ?1 WHERE name = ?2",
+    params![display_name, name]
+  ).map_err(|e| e.to_string())?;
+
+  Ok(())
+}
+
+// Pause app
 #[tauri::command]
 pub fn pause_app(app: AppHandle, name: String) -> Result<bool, String> {
   let conn = get_connection(&app)?;
@@ -184,13 +204,14 @@ pub fn get_paused_appnames(app: &AppHandle) -> Result<Vec<String>, String> {
 #[tauri::command]
 pub fn get_tracked_apps(app: AppHandle) -> Result<Vec<TrackedApps>, String> {
   let conn = get_connection(&app)?;
-  let mut stmt = conn.prepare("SELECT id, name, icon FROM tracked_apps").map_err(|e| e.to_string())?;
+  let mut stmt = conn.prepare("SELECT id, name, icon, display_name FROM tracked_apps").map_err(|e| e.to_string())?;
 
   let apps_iter = stmt.query_map([], |row| {
     Ok(TrackedApps {
       id: row.get(0)?,
       name: row.get(1)?,
-      icon: row.get(2)?
+      icon: row.get(2)?,
+      display_name: row.get(3)?
     })
   }).map_err(|e| e.to_string())?;
 
