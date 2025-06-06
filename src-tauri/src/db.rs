@@ -122,6 +122,20 @@ pub fn remove_app(app: AppHandle, name: String, delete_usage: bool) -> Result<()
   Ok(())
 }
 
+// Update app (just time for now
+#[tauri::command]
+pub fn update_app(app: AppHandle, name: String, total_seconds: i64) -> Result<(), String> {
+  let conn = get_connection(&app)?;
+
+  conn.execute(
+    "INSERT INTO app_usage (name, total_seconds) VALUES (?1, ?2)
+    ON CONFLICT(name) DO UPDATE SET total_seconds = ?2",
+    params![name, total_seconds]
+  ).map_err(|e| e.to_string())?;
+
+  Ok(())
+}
+
 // Get the apps in the tracked_app table
 #[tauri::command]
 pub fn get_tracked_apps(app: AppHandle) -> Result<Vec<TrackedApps>, String> {

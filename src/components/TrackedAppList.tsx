@@ -26,6 +26,13 @@ const formatTime = (secs: number): string => {
   return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
 }
 
+const timeStringToSeconds = (timeStr: string): number => {
+  const parts = timeStr.split(':').map(p => parseInt(p, 10))
+  if (parts.length !== 3 || parts.some(isNaN)) return 0
+  const [h, m, s] = parts
+  return h * 3600 + m * 60 + s 
+}
+
 export default function TrackedAppList() {
   const [apps, setApps] = useState<TrackedApp[]>([])
   const [usage, setUsage] = useState<Record<string, number>>({});
@@ -34,12 +41,15 @@ export default function TrackedAppList() {
   const [modalProcesses, setModalProcesses] = useState<ProcessInfo[]>([])
   const [selectedName, setSelectedName] = useState<string>('')
   const [appToDelete, setAppToDelete] = useState<TrackedApp | null>(null)
+  const [appToEdit, setAppToEdit] = useState<TrackedApp | null> (null)
+  const [editTimeValue, setEditTimeValue] = useState<string>('')
   const [runningApps, setRunningApps] = useState<string[]>([])
 
   const dbSyncInterval = useRef<number>()
   const runningAppsInterval = useRef<number>()
   const addModalRef = useRef<HTMLDivElement>(null)
   const deleteModalRef = useRef<HTMLDivElement>(null)
+  const editModalRef = useRef<HTMLDivElement>(null)
 
   // Load apps
   const loadApps = async () => {
@@ -107,6 +117,7 @@ export default function TrackedAppList() {
       if (e.key === 'Escape') {
         setShowModal(false)
         setAppToDelete(null)
+        setAppToEdit(null)
       }
     }
 
@@ -120,6 +131,11 @@ export default function TrackedAppList() {
       // Delete/Remove App Modal
       if (deleteModalRef.current && !deleteModalRef.current.contains(e.target as Node)) {
         setAppToDelete(null)
+      }
+
+      // Edit App Modal
+      if (editModalRef.current && !editModalRef.current.contains(e.target as Node)) {
+        setAppToEdit(null)
       }
     } 
 
@@ -173,6 +189,30 @@ export default function TrackedAppList() {
     }
   }
 
+  // Edit app handler
+  const handleEdit = (app: TrackedApp) => {
+    setAppToEdit(app)
+    const currentUsage = usage[app.name]
+    setEditTimeValue(formatTime(currentUsage))
+  }
+
+  // Save edit app handler
+  const handleSaveEdit = async () => {
+    if (!appToEdit) return
+
+    const newSeconds = timeStringToSeconds(editTimeValue)
+    // future Melek do not forget to add invalid format handling
+
+    try {
+      await invoke('update_app', { name: appToEdit.name, totalSeconds: newSeconds })
+      setAppToEdit(null)
+      await loadUsage()
+    } catch(error) {
+      console.error('Failed to update app time: ', error)
+    }
+  }
+
+
   // Modal handler
   const handleModalAdd = async () => {
     if (!selectedName) return
@@ -194,7 +234,7 @@ export default function TrackedAppList() {
       <div className='flex justify-end'>
         <button
           onClick={handleAdd}
-          className='px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition'
+          className='px-4 py-2 bg-emerald-500 text-white rounded-md hover:bg-emerald-600 transition'
         > 
           Add App
         </button>
@@ -223,7 +263,7 @@ export default function TrackedAppList() {
               )}
               <span className='font-medium'>{app.name}</span>
               {runningApps.includes(app.name) ? (
-                <span className='px-2 py-0.5 text-xs font-semibold text-white bg-green-500 rounded-full'>
+                <span className='px-2 py-0.5 text-xs font-semibold text-white bg-emerald-500 rounded-full'>
                   Running
                 </span>
               ) : (
@@ -232,22 +272,37 @@ export default function TrackedAppList() {
                 </span>
               )}
             </div>
-            {usage[app.name] !== undefined && (
-              <span className='ml-2 text-sm text-blue-600'>
-                {formatTime(usage[app.name])}
-              </span>
-            )}
-            <button
-              onClick={() => setAppToDelete(app)}  
-              className='px-3 py-1 bg-red-600 text-white rounded-md hover:bg-red-700 transition text-xs'
-            > 
-              Remove
-            </button>
+            <div className='flex items-center space-x-3'> 
+
+              {/* USAGE TIME */}
+              {usage[app.name] !== undefined && (
+                <span className='ml-2 text-sm text-blue-500'>
+                  {formatTime(usage[app.name])}
+                </span>
+              )}
+
+              {/* EDIT BUTTON */}
+              <button
+                onClick={() => handleEdit(app)}
+                className='px-3 py-1 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition text-xs'
+              > 
+                Edit
+              </button>
+
+              {/* DELETE BUTTON */}
+              <button
+                onClick={() => setAppToDelete(app)}  
+                className='px-3 py-1 bg-rose-500 text-white rounded-md hover:bg-rose-600 transition text-xs'
+              > 
+                Remove
+              </button>  
+
+            </div>
           </div>
         ))
       )}
 
-      {/* Add App Modal */}
+      {/* ADD APP MODAL */}
       {showModal && (
         <div className='fixed inset-0 bg-black/50 flex items-center justify-center z-999'>
           <div ref={addModalRef} className='bg-white p-6 rounded-lg w-80'>
@@ -274,7 +329,7 @@ export default function TrackedAppList() {
               </button>
               <button
                 onClick={handleModalAdd}
-                className='px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition'
+                className='px-4 py-2 bg-emerald-500 text-white rounded-md hover:bg-emerald-600 transition'
               >   
                 Add
               </button>
@@ -283,7 +338,49 @@ export default function TrackedAppList() {
         </div>
       )}
 
-      {/* Delete Modal */}
+
+      {/* EDIT MODAL */}
+      {appToEdit && (
+        <div className='fixed inset-0 bg-black/50 flex items-center justify-center z-999'>
+          <div ref={editModalRef} className='bg-white p-6 rounded-lg w-96 shadow-lg'>
+            <h2 className='text-lg font-semibold mb-2'>
+              Edit '{appToEdit.name}'
+            </h2>
+            <div className='mb-6'>
+              <label className='block text-sm font-medium text-gray-700 mb-2'>
+                Time (hh:mm:ss):
+              </label>
+              <input 
+                type="text" 
+                value={editTimeValue}
+                onChange={(e) => setEditTimeValue(e.target.value)}
+                placeholder='00:00:00'
+                className='w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'
+              />
+              <p className='text-xs text-gray-500 mt-1'>
+                (e.g., 01:30:15 for 1 hour, 30 minutes, 15 seconds)
+              </p>
+            </div>
+            <div className='flex items-center space-x-3'>
+              <button
+                onClick={() => setAppToEdit(null)}
+                className='px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition'
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveEdit}
+                className='px-4 py-2 bg-emerald-500 text-white rounded-md hover:bg-emerald-600 transition'
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+
+      {/* DELETE MODAL */}
       {appToDelete && (
         <div className='fixed inset-0 bg-black/50 flex items-center justify-center z-999'>
           <div ref={deleteModalRef} className='bg-white p-6 rounded-lg w-96 shadow-lg'>
